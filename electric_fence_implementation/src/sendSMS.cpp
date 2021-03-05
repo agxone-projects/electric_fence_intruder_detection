@@ -35,7 +35,7 @@ SMSModule::SMSModule()
         Serial.println("Setting power error");
     }
     setupModem();
-    SerialAT.begin(230400, SERIAL_8N1, 26, 27);
+    SerialAT.begin(115200, SERIAL_8N1, 26, 27);
     delay(6000);
     Serial.println("Initializing modem...");
     modem.restart();

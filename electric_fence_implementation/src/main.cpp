@@ -6,8 +6,8 @@
 
 using namespace std;
 
-static int16_t threshold = 4000;
 static int16_t analog;
+static int16_t threshold = 4000;
 
 static int32_t bufferSizeInBytes = 60000;
 static int32_t bufferSizeInSamples = bufferSizeInBytes / sizeof(int16_t);
@@ -27,7 +27,6 @@ void IRAM_ATTR maxChecker(void *param)
     while (1)
     {
         uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
-        Serial.printf("ulNotificationValue : %.3f \n", ulNotificationValue);
         if (ulNotificationValue == 1)
         {
             int16_t max = 0;
@@ -59,8 +58,10 @@ void IRAM_ATTR maxChecker(void *param)
             {
                 Serial.printf("Electric fence is fine. Mean is : %.2f \n", mean);
             }
-        } else {
-            Serial.printf("ulNotificationValue : %.3f \n", ulNotificationValue);
+        }
+        else
+        {
+            Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
         }
     }
 }
@@ -93,7 +94,6 @@ void setup()
     Serial.begin(115200);
     SMSModule *smsModule = new SMSModule();
     smsModule->getRecievers();
-    
     smsModule->sendSMS("SMS Works!");
     xTaskCreatePinnedToCore(readVoltage, "Voltage Reader", 4096, NULL, 1, &readVoltageTaskHandle, 1);
     xTaskCreatePinnedToCore(maxChecker, "Max Checker", 4096, smsModule, 1, &maxCheckerTaskHandle, 0);
@@ -101,5 +101,5 @@ void setup()
 
 void loop()
 {
-    vTaskDelay(NULL);
+    vTaskDelay(1);
 }

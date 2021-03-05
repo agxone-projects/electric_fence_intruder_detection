@@ -80,6 +80,7 @@ void IRAM_ATTR readVoltage(void *param)
         }
         utime1 = utime2;
         utime2 = esp_timer_get_time();
+        
         freq = 1000000 / (utime2 - utime1);
     }
 }

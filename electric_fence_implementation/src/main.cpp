@@ -7,16 +7,10 @@
 using namespace std;
 
 static int16_t analog;
-static int16_t threshold = 4000;
-
-static int32_t bufferSizeInBytes = 60000;
-static int32_t bufferSizeInSamples = bufferSizeInBytes / sizeof(int16_t);
-int16_t *buffer1 = (int16_t *)malloc(bufferSizeInBytes);
-int16_t *buffer2 = (int16_t *)malloc(bufferSizeInBytes);
-static int num_buffer_swaps = 0;
+const int16_t threshold = 4000;
+const int16_t num_samples = 30000;
 
 const int16_t maxBufferSizeInSamples = 10;
-
 FixedQueue<int16_t, maxBufferSizeInSamples> maxBuffer;
 
 TaskHandle_t maxCheckerTaskHandle;
@@ -28,18 +22,6 @@ void IRAM_ATTR maxChecker(void *param)
     {
         uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
         if (ulNotificationValue == 1)
-        {
-            int16_t max = 0;
-            for (int a = 0; a < bufferSizeInSamples; a++)
-            {
-                if (buffer2[a] > max)
-                {
-                    max = buffer2[a];
-                }
-                maxBuffer.push(max);
-            }
-        }
-        else if (ulNotificationValue == 2)
         {
             long int total = 0;
             FixedQueue<int16_t, maxBufferSizeInSamples> maxBufferCopy = maxBuffer;
@@ -59,30 +41,27 @@ void IRAM_ATTR maxChecker(void *param)
                 Serial.printf("Electric fence is fine. Mean is : %.2f \n", mean);
             }
         }
-        else
-        {
-            Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
-        }
     }
 }
 
 TaskHandle_t readVoltageTaskHandle;
 void IRAM_ATTR readVoltage(void *param)
 {
+    int num_max = 0;
     while (1)
     {
-        for (int x = 0; x < bufferSizeInSamples; x++)
+        int16_t max = 0;
+        for (int x = 0; x < num_samples; x++)
         {
             analog = analogRead(34);
-            buffer1[x] = analog;
+            if (max < analog)
+            {
+                max = analog;
+            }
         }
-        num_buffer_swaps++;
-        swap(buffer1, buffer2);
-        if (num_buffer_swaps % 10 == 0)
-        {
-            xTaskNotify(maxCheckerTaskHandle, 2, eSetValueWithOverwrite);
-        }
-        else
+        maxBuffer.push(max);
+        num_max++;
+        if (num_max == maxBufferSizeInSamples)
         {
             xTaskNotify(maxCheckerTaskHandle, 1, eSetValueWithOverwrite);
         }
@@ -94,7 +73,7 @@ void setup()
     Serial.begin(115200);
     SMSModule *smsModule = new SMSModule();
     smsModule->getRecievers();
-    smsModule->sendSMS("SMS Works!");
+    smsModule->sendSMS("GSM Module Initiated!");
     xTaskCreatePinnedToCore(readVoltage, "Voltage Reader", 4096, NULL, 1, &readVoltageTaskHandle, 1);
     xTaskCreatePinnedToCore(maxChecker, "Max Checker", 4096, smsModule, 1, &maxCheckerTaskHandle, 0);
 }

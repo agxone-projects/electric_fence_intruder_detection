@@ -7,7 +7,7 @@
 using namespace std;
 
 static int16_t analog;
-const int16_t threshold = 4000;
+const int16_t threshold = 3950;
 const int16_t num_samples = 30000;
 
 const int16_t maxBufferSizeInSamples = 10;
@@ -17,10 +17,10 @@ TaskHandle_t maxCheckerTaskHandle;
 void IRAM_ATTR maxChecker(void *param)
 {
     SMSModule *smsModule = static_cast<SMSModule *>(param);
-    // smsModule->getRecievers();
     while (1)
     {
         uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
+        // Serial.printf("UlNotifinationValue is %d \n", ulNotificationValue);
         if (ulNotificationValue == 1)
         {
             long int total = 0;
@@ -64,6 +64,7 @@ void IRAM_ATTR readVoltage(void *param)
         if (num_max == maxBufferSizeInSamples)
         {
             xTaskNotify(maxCheckerTaskHandle, 1, eSetValueWithOverwrite);
+            num_max = 0;
         }
     }
 }
@@ -71,6 +72,7 @@ void IRAM_ATTR readVoltage(void *param)
 void setup()
 {
     Serial.begin(115200);
+
     SMSModule *smsModule = new SMSModule();
     smsModule->getRecievers();
     smsModule->sendSMS("GSM Module Initiated!");

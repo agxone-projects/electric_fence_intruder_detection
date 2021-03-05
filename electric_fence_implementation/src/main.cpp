@@ -15,7 +15,7 @@ int16_t *buffer1 = (int16_t *)malloc(bufferSizeInBytes);
 int16_t *buffer2 = (int16_t *)malloc(bufferSizeInBytes);
 static int num_buffer_swaps = 0;
 
-const int16_t maxBufferSizeInSamples = 10;
+const int16_t maxBufferSizeInSamples = 100;
 
 FixedQueue<int16_t, maxBufferSizeInSamples> maxBuffer;
 
@@ -52,16 +52,12 @@ void IRAM_ATTR maxChecker(void *param)
             if (mean < threshold)
             {
                 Serial.printf("Something is wrong! Mean is : %.2f \n", mean);
-                smsModule->sendSMS("Something is wrong!");
+                // smsModule->sendSMS("Something is wrong!");
             }
             else
             {
                 Serial.printf("Electric fence is fine. Mean is : %.2f \n", mean);
             }
-        }
-        else
-        {
-            Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
         }
     }
 }
@@ -76,11 +72,12 @@ void IRAM_ATTR readVoltage(void *param)
             analog = analogRead(34);
             buffer1[x] = analog;
         }
-        num_buffer_swaps++;
         swap(buffer1, buffer2);
-        if (num_buffer_swaps % 10 == 0)
+        num_buffer_swaps++;
+        if (num_buffer_swaps % maxBufferSizeInSamples == 0)
         {
             xTaskNotify(maxCheckerTaskHandle, 2, eSetValueWithOverwrite);
+            num_buffer_swaps = 0;
         }
         else
         {
@@ -94,7 +91,7 @@ void setup()
     Serial.begin(115200);
     SMSModule *smsModule = new SMSModule();
     smsModule->getRecievers();
-    smsModule->sendSMS("SMS Works!");
+    smsModule->sendSMS("GSM Modem Initialized!");
     xTaskCreatePinnedToCore(readVoltage, "Voltage Reader", 4096, NULL, 1, &readVoltageTaskHandle, 1);
     xTaskCreatePinnedToCore(maxChecker, "Max Checker", 4096, smsModule, 1, &maxCheckerTaskHandle, 0);
 }

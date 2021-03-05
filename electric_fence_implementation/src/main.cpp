@@ -3,6 +3,7 @@
 #include <driver/adc.h>
 #include "ringbuffer.h"
 #include "FixedQuene.h"
+#include "esp_timer.h"
 
 using namespace std;
 
@@ -12,6 +13,16 @@ const int16_t num_samples = 30000;
 
 const int16_t maxBufferSizeInSamples = 10;
 FixedQueue<int16_t, maxBufferSizeInSamples> maxBuffer;
+
+static long long int utime1;
+static long long int utime2;
+static int freq;
+
+static void periodic_timer_callback(void *arg)
+{
+    Serial.print("Time per loop: ")
+        Serial.println(freq);
+};
 
 TaskHandle_t maxCheckerTaskHandle;
 void IRAM_ATTR maxChecker(void *param)
@@ -47,6 +58,7 @@ void IRAM_ATTR maxChecker(void *param)
 TaskHandle_t readVoltageTaskHandle;
 void IRAM_ATTR readVoltage(void *param)
 {
+
     int num_max = 0;
     while (1)
     {
@@ -66,12 +78,25 @@ void IRAM_ATTR readVoltage(void *param)
             xTaskNotify(maxCheckerTaskHandle, 1, eSetValueWithOverwrite);
             num_max = 0;
         }
+        utime1 = utime2;
+        utime2 = esp_timer_get_time();
+        freq = 1000000 / (utime2 - utime1);
     }
 }
 
 void setup()
 {
     Serial.begin(115200);
+
+    const esp_timer_create_args_t periodic_timer_args = {
+        callback : &periodic_timer_callback
+
+    };
+
+    esp_timer_handle_t periodic_timer;
+    esp_timer_create(&periodic_timer_args, &periodic_timer);
+    /* The timer has been created but is not running yet */
+    esp_timer_start_periodic(periodic_timer, 500000);
 
     SMSModule *smsModule = new SMSModule();
     smsModule->getRecievers();
@@ -82,5 +107,5 @@ void setup()
 
 void loop()
 {
-    vTaskDelay(1);
+    vTaskDelete(NULL);
 }

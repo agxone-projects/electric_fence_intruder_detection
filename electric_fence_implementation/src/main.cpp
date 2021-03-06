@@ -7,26 +7,31 @@
 using namespace std;
 
 static int16_t analog;
-static int16_t threshold = 4000;
 
-static int32_t bufferSizeInBytes = 60000;
-static int32_t bufferSizeInSamples = bufferSizeInBytes / sizeof(int16_t);
+const int16_t threshold = 4000;
+const int16_t disconnect_threshold = 1000;
+
+const int32_t bufferSizeInBytes = 60000;
+const int32_t bufferSizeInSamples = bufferSizeInBytes / sizeof(int16_t);
+
 int16_t *buffer1 = (int16_t *)malloc(bufferSizeInBytes);
 int16_t *buffer2 = (int16_t *)malloc(bufferSizeInBytes);
-static int num_buffer_swaps = 0;
 
-const int16_t maxBufferSizeInSamples = 100;
+static int buffers_processed = 0;
 
-FixedQueue<int16_t, maxBufferSizeInSamples> maxBuffer;
+// buffer that contains the Max of each buffer
+const int maxBufferSize = 100;
+FixedQueue<int16_t, maxBufferSize> maxBuffer;
 
 TaskHandle_t maxCheckerTaskHandle;
 void IRAM_ATTR maxChecker(void *param)
 {
     SMSModule *smsModule = static_cast<SMSModule *>(param);
-    // smsModule->getRecievers();
     while (1)
     {
         uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
+        Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
+
         if (ulNotificationValue == 1)
         {
             int16_t max = 0;
@@ -42,17 +47,22 @@ void IRAM_ATTR maxChecker(void *param)
         else if (ulNotificationValue == 2)
         {
             long int total = 0;
-            FixedQueue<int16_t, maxBufferSizeInSamples> maxBufferCopy = maxBuffer;
-            while (maxBufferCopy.size() > 0)
+            while (maxBuffer.size() > 0)
             {
-                total += maxBufferCopy.front();
-                maxBufferCopy.pop();
+                total += maxBuffer.front();
+                maxBuffer.pop();
             }
-            float mean = total / (float)maxBufferSizeInSamples;
-            if (mean < threshold)
+            float mean = total / (float)maxBufferSize;
+
+            if (mean < disconnect_threshold)
             {
-                Serial.printf("Something is wrong! Mean is : %.2f \n", mean);
-                // smsModule->sendSMS("Something is wrong!");
+                Serial.printf("Electric Fence is Seems to Disconnected! Mean is : %.2f \n", mean);
+                // smsModule->sendSMS("ALERT! Electric Fence Disconnected!");
+            }
+            else if (mean < threshold)
+            {
+                Serial.printf("Intruder Detected! Mean is : %.2f \n", mean);
+                // smsModule->sendSMS("ALERT! Intruder Detected!");
             }
             else
             {
@@ -73,15 +83,15 @@ void IRAM_ATTR readVoltage(void *param)
             buffer1[x] = analog;
         }
         swap(buffer1, buffer2);
-        num_buffer_swaps++;
-        if (num_buffer_swaps % maxBufferSizeInSamples == 0)
+        if (buffers_processed == maxBufferSize)
         {
             xTaskNotify(maxCheckerTaskHandle, 2, eSetValueWithOverwrite);
-            num_buffer_swaps = 0;
+            buffers_processed = 0;
         }
         else
         {
             xTaskNotify(maxCheckerTaskHandle, 1, eSetValueWithOverwrite);
+            buffers_processed++;
         }
     }
 }
@@ -98,5 +108,5 @@ void setup()
 
 void loop()
 {
-    vTaskDelay(1);
+    vTaskDelete(NULL);
 }

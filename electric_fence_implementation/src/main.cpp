@@ -11,11 +11,11 @@ static int16_t analog;
 const int16_t threshold = 4000;
 const int16_t disconnect_threshold = 1000;
 
-const int32_t bufferSizeInBytes = 60000;
+const int32_t bufferSizeInBytes = 60000; //
 const int32_t bufferSizeInSamples = bufferSizeInBytes / sizeof(int16_t);
 
-int16_t *buffer1 = (int16_t *)malloc(bufferSizeInBytes);
-int16_t *buffer2 = (int16_t *)malloc(bufferSizeInBytes);
+int16_t *buffer1 = (int16_t *)malloc(bufferSizeInBytes); // primary buffer
+int16_t *buffer2 = (int16_t *)malloc(bufferSizeInBytes); //secondary buffer
 
 static int buffers_processed = 0;
 
@@ -32,6 +32,8 @@ void IRAM_ATTR maxChecker(void *param)
         uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
         Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
 
+        // unsigned long StartTime = millis();
+
         if (ulNotificationValue == 1)
         {
             int16_t max = 0;
@@ -43,6 +45,10 @@ void IRAM_ATTR maxChecker(void *param)
                 }
                 maxBuffer.push(max);
             }
+
+            // unsigned long EndTime = millis();
+            // unsigned long ElapsedTime = EndTime - StartTime;
+            // Serial.printf("Time taken to Find Max of 1 Buffer and Add to MaxBuffer : %d \n", ElapsedTime);
         }
         else if (ulNotificationValue == 2)
         {
@@ -68,6 +74,10 @@ void IRAM_ATTR maxChecker(void *param)
             {
                 Serial.printf("Electric fence is fine. Mean is : %.2f \n", mean);
             }
+
+            // unsigned long EndTime = millis();
+            // unsigned long ElapsedTime = EndTime - StartTime;
+            // Serial.printf("Time taken to Calculate Mean of Max Buffer and Inform : %d \n", ElapsedTime);
         }
     }
 }
@@ -77,12 +87,15 @@ void IRAM_ATTR readVoltage(void *param)
 {
     while (1)
     {
+        // unsigned long StartTime = millis();
+
         for (int x = 0; x < bufferSizeInSamples; x++)
         {
             analog = analogRead(34);
             buffer1[x] = analog;
         }
         swap(buffer1, buffer2);
+
         if (buffers_processed == maxBufferSize)
         {
             xTaskNotify(maxCheckerTaskHandle, 2, eSetValueWithOverwrite);
@@ -93,6 +106,10 @@ void IRAM_ATTR readVoltage(void *param)
             xTaskNotify(maxCheckerTaskHandle, 1, eSetValueWithOverwrite);
             buffers_processed++;
         }
+
+        // unsigned long EndTime = millis();
+        // unsigned long ElapsedTime = EndTime - StartTime;
+        // Serial.printf("Time taken to Fill 1 Buffer and Swap and Notify Task 2: %d \n", ElapsedTime);
     }
 }
 
@@ -108,5 +125,5 @@ void setup()
 
 void loop()
 {
-    vTaskDelete(NULL);
+    vTaskDelay(1);
 }

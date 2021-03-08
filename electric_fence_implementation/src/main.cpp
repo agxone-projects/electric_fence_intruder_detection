@@ -20,8 +20,8 @@ static int freq;
 
 static void periodic_timer_callback(void *arg)
 {
-    Serial.print("Time per loop: ")
-        Serial.println(freq);
+    // Serial.print("Time per loop: ")
+    Serial.println(freq);
 };
 
 TaskHandle_t maxCheckerTaskHandle;
@@ -81,7 +81,7 @@ void IRAM_ATTR readVoltage(void *param)
         utime1 = utime2;
         utime2 = esp_timer_get_time();
         
-        freq = 1000000 / (utime2 - utime1);
+        freq = utime2 - utime1;
     }
 }
 

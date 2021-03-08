@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "sendSMS.h"
 #include <driver/adc.h>
-#include "ringbuffer.h"
 #include "FixedQuene.h"
 
 using namespace std;
@@ -20,17 +19,18 @@ int16_t *buffer2 = (int16_t *)malloc(bufferSizeInBytes); //secondary buffer
 static int buffers_processed = 0;
 
 // buffer that contains the Max of each buffer
-const int maxBufferSize = 100;
+const int maxBufferSize = 10;
 FixedQueue<int16_t, maxBufferSize> maxBuffer;
 
 TaskHandle_t maxCheckerTaskHandle;
 void IRAM_ATTR maxChecker(void *param)
 {
     SMSModule *smsModule = static_cast<SMSModule *>(param);
+
     while (1)
     {
         uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(3000));
-        Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
+        // Serial.printf("ulNotificationValue : %d \n", ulNotificationValue);
 
         // unsigned long StartTime = millis();
 
@@ -118,7 +118,7 @@ void setup()
     Serial.begin(115200);
     SMSModule *smsModule = new SMSModule();
     smsModule->getRecievers();
-    smsModule->sendSMS("GSM Modem Initialized!");
+    // smsModule->sendSMS("GSM Modem Initialized!");
     xTaskCreatePinnedToCore(readVoltage, "Voltage Reader", 4096, NULL, 1, &readVoltageTaskHandle, 1);
     xTaskCreatePinnedToCore(maxChecker, "Max Checker", 4096, smsModule, 1, &maxCheckerTaskHandle, 0);
 }

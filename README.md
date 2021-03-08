@@ -24,3 +24,6 @@
 - [ ] Final product implementation
 - [ ] Installation and testing
 
+Example electric fence waveform
+![example waveform](https://github.com/agxone-projects/electric_fence_intruder_detection/tree/main/AgX_get_samples/images/samples_no_filter.png?raw=true)
+
